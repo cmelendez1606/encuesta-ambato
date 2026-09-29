@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Supervisión · Encuesta Ambato</title>
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--fondo:#f4f6f9;--tarjeta:#fff;--texto:#14202e;--suave:#5b6878;--borde:#dde3ea;--grid:#eef1f5;
+--barra:#2d5487;--barra-adn:#c2410c;--ok:#1b7f4b;--rev:#b45309;--sos:#b3261e;--prim:#1f3a5f}
+@media (prefers-color-scheme:dark){:root{--fondo:#0f1620;--tarjeta:#172231;--texto:#e6edf5;--suave:#9aa8b8;--borde:#2a3849;--grid:#223042;--barra:#6fa0dc;--barra-adn:#f08a4b;--ok:#4cc38a;--rev:#f0a33a;--sos:#f26b62;--prim:#9cc2f0}}
+*{box-sizing:border-box}body{margin:0;background:var(--fondo);color:var(--texto);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--tarjeta);border-bottom:1px solid var(--borde);padding:12px 16px;position:sticky;top:0;z-index:1000}
+.cab{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.cab h1{font-size:1.05rem;margin:0}.cab .suave{font-size:.82rem}
+nav{max-width:1200px;margin:8px auto 0;display:flex;gap:6px;overflow-x:auto}
+nav button{border:1px solid var(--borde);background:var(--tarjeta);color:var(--texto);padding:7px 12px;border-radius:999px;font:inherit;font-size:.88rem;cursor:pointer;white-space:nowrap}
+nav button.act{background:var(--prim);color:var(--tarjeta);border-color:var(--prim)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.suave{color:var(--suave)}.g{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(4,1fr)}@media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.dos{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.t{background:var(--tarjeta);border:1px solid var(--borde);border-radius:14px;padding:16px;min-width:0}
+.t h2{font-size:.98rem;margin:0 0 4px}.t .sub{font-size:.8rem;color:var(--suave);margin-bottom:12px}
+.kpi b{display:block;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}.kpi span{font-size:.82rem;color:var(--suave)}
+.fila{display:grid;grid-template-columns:minmax(120px,46%) 1fr 52px;gap:8px;align-items:center;margin:6px 0;font-size:.88rem}
+.fila .nom{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pista{height:14px;background:var(--grid);border-radius:4px;overflow:hidden}
+.pista i{display:block;height:100%;background:var(--barra);border-radius:0 4px 4px 0}
+.fila.adn .pista i{background:var(--barra-adn)}.fila.adn .nom{font-weight:700}
+.fila .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:6px;border:1px solid currentColor;margin-left:6px;vertical-align:1px}
+table{width:100%;border-collapse:collapse;font-size:.86rem}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--borde);vertical-align:top}
+th{font-size:.78rem;color:var(--suave);font-weight:600;cursor:pointer;user-select:none;white-space:nowrap}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tabla{overflow-x:auto}
+.est{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:.78rem;white-space:nowrap}
+.est::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+.est.OK{color:var(--ok)}.est.REVISAR{color:var(--rev)}.est.SOSPECHOSA{color:var(--sos)}
+.aviso{border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:.9rem;border:1px solid var(--borde);background:var(--tarjeta)}
+.aviso.prueba{border-color:#7c3aed;color:#7c3aed}.aviso.adv{border-color:var(--rev);color:var(--rev)}
+.login{max-width:380px;margin:80px auto}.login input{width:100%;font:inherit;padding:12px;border:1px solid var(--borde);border-radius:10px;background:var(--tarjeta);color:var(--texto);margin:8px 0}
+.btn{border:0;background:var(--prim);color:var(--tarjeta);font:inherit;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn.sec{background:transparent;color:var(--prim);border:1px solid var(--prim)}
+.prog{height:10px;background:var(--grid);border-radius:99px;overflow:hidden;margin-top:8px}.prog i{display:block;height:100%;background:var(--ok)}
+#mapa{height:560px;border-radius:12px}
+.cols{display:flex;gap:8px;align-items:flex-end;height:140px;padding-top:8px}
+.cols{justify-content:flex-start}.cols div{flex:1;max-width:46px;background:var(--barra);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.cols-lab{display:flex;gap:8px;font-size:.7rem;color:var(--suave)}.cols-lab span{flex:1;max-width:46px;text-align:center;overflow:hidden}
+.ley{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;margin:8px 0}
+select.f{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--borde);background:var(--tarjeta);color:var(--texto)}
+@media (max-width:600px){.dos{grid-template-columns:1fr}.fila{grid-template-columns:minmax(90px,42%) 1fr 46px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="cab">
+    <div><h1 id="titulo">Panel de Supervisión</h1><div class="suave" id="actualizado"></div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="suave" style="font-size:.82rem"><input type="checkbox" id="incRev" checked> Incluir "por revisar" en resultados</label>
+      <button class="btn sec" id="btnRef">Actualizar</button>
+    </div>
+  </div>
+  <nav id="tabs" hidden></nav>
+</header>
+<main id="main"><div class="login t" id="login">
+  <h2>Panel de supervisión</h2>
+  <p class="suave">Ingrese la clave que aparece en el menú "Encuesta Ambato → Ver clave del panel" de la hoja de Google.</p>
+  <input id="clave" type="password" placeholder="Clave del panel" autocomplete="current-password">
+  <button class="btn" id="btnEntrar" style="width:100%">Entrar</button>
+  <p id="err" style="color:var(--sos)"></p>
+</div></main>
+
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+'use strict';
+let D = null, tab = 'resumen', mapa = null, capa = null;
+const TABS = [['resumen','Resumen'],['resultados','Resultados'],['parroquias','Parroquias'],['brigadistas','Brigadistas'],['alertas','Alertas'],['mapa','Mapa']];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => (n ?? 0).toLocaleString('es-EC');
+const fecha = v => { const d = new Date(v); return isNaN(d) ? '' : d.toLocaleString('es-EC', {dateStyle:'short', timeStyle:'short'}); };
+const clave = () => { try { return localStorage.getItem('ea_panel_clave') || ''; } catch(e) { return ''; } };
+
+async function cargar() {
+  $('actualizado').textContent = 'Cargando…';
+  const q = new URLSearchParams({action:'panel', key: clave(), incluirRevisar: $('incRev').checked ? 'si' : 'no'});
+  try {
+    const r = await fetch(API_URL + '?' + q, {redirect:'follow'});
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Error');
+    D = j; $('login').remove?.(); $('tabs').hidden = false; pintarTabs(); pintar();
+    $('titulo').textContent = D.estudio + ' · Supervisión';
+    $('actualizado').textContent = 'Actualizado ' + fecha(D.generado) + ' · se refresca cada 2 min';
+  } catch (e) {
+    if (!D) { $('err').textContent = e.message; try { localStorage.removeItem('ea_panel_clave'); } catch(_) {} }
+    $('actualizado').textContent = 'No se pudo actualizar: ' + e.message;
+  }
+}
+function pintarTabs() {
+  $('tabs').innerHTML = TABS.map(([k,l]) => `<button class="${k===tab?'act':''}" data-t="${k}">${l}${k==='alertas' && D ? ' ('+(D.kpis.revisar+D.kpis.sospechosas)+')' : ''}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.t; pintarTabs(); pintar(); });
+}
+const esADN = nom => (D.candidatosADN || []).includes(nom);
+function barras(lista, opt = {}) {
+  if (!lista || !lista.length) return '<p class="suave">Sin datos todavía.</p>';
+  const max = Math.max(...lista.map(x => x.pct), 1);
+  return lista.slice(0, opt.max || 20).map(x => `<div class="fila ${esADN(x.opcion) ? 'adn' : ''}" title="${esc(x.opcion)}: ${x.pct}% (n ponderado ${x.n})">
+    <span class="nom">${esc(x.opcion)}${esADN(x.opcion) ? '<span class="tag">L7</span>' : ''}</span>
+    <span class="pista"><i style="width:${(100 * x.pct / max).toFixed(1)}%"></i></span><span class="v">${x.pct}%</span></div>`).join('');
+}
+function tarjeta(t, sub, cuerpo) { return `<div class="t"><h2>${t}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}${cuerpo}</div>`; }
+function avisos() {
+  let h = '';
+  if (D.modoPrueba) h += `<div class="aviso prueba"><b>Modo capacitación activo.</b> Las encuestas se guardan como PRUEBA y no cuentan (${fmt(D.kpis.encuestasPrueba)} de prueba). Cambie MODO_PRUEBA a NO en la hoja "Configuración" el día del levantamiento.</div>`;
+  if (!D.ponderado) h += `<div class="aviso adv">Resultados <b>sin ponderar</b>: falta cargar los electores por parroquia (padrón CNE) en la hoja "Parroquias".</div>`;
+  return h;
+}
+
+function pintar() {
+  const k = D.kpis, m = $('main');
+  if (tab === 'resumen') {
+    const avance = Math.min(100, Math.round(100 * k.validas / D.muestraObjetivo));
+    const maxDia = Math.max(1, ...D.porDia.map(d => d.total));
+    const dias = D.porDia.slice(-14);
+    const vis = Object.entries(D.visitas || {}).sort((a,b)=>b[1]-a[1]).map(([o,n]) => ({opcion:o, pct: n, n}));
+    m.innerHTML = avisos() + `<div class="g kpis">
+      ${[['Encuestas válidas', fmt(k.validas)], ['Recibidas en total', fmt(k.total)], ['Hoy', fmt(k.hoy)], ['Por revisar', fmt(k.revisar)], ['Sospechosas', fmt(k.sospechosas)], ['Margen de error', k.margenError ? '±' + k.margenError + '%' : '—'], ['Brigadistas activos hoy', fmt(k.brigadistasActivosHoy) + ' / ' + fmt(k.brigadistasRegistrados)], ['Visitas sin encuesta', fmt(k.visitasNoEfectivas)]]
+        .map(([l,v]) => `<div class="t kpi"><b>${v}</b><span>${l}</span></div>`).join('')}
+    </div>
+    <div class="t" style="margin-top:14px"><h2>Avance hacia la meta</h2><div class="sub">${fmt(k.validas)} de ${fmt(D.muestraObjetivo)} encuestas válidas (${avance}%) · urbano n=${k.nUrbano} (±${k.margenUrbano ?? '—'}%) · rural n=${k.nRural} (±${k.margenRural ?? '—'}%)</div><div class="prog"><i style="width:${avance}%"></i></div></div>
+    <div class="g dos" style="margin-top:14px">
+      ${tarjeta('Encuestas por día', 'Últimos 14 días · barra = total recibido', dias.length ? `<div class="cols">${dias.map(d => `<div title="${d.dia}: ${d.total} recibidas, ${d.validas} válidas" style="height:${100*d.total/maxDia}%"></div>`).join('')}</div><div class="cols-lab">${dias.map(d=>`<span>${d.dia.slice(5)}</span>`).join('')}</div>` : '<p class="suave">Sin datos todavía.</p>')}
+      ${tarjeta('Visitas sin encuesta', 'Casas visitadas donde no se pudo encuestar (cantidad)', vis.length ? vis.map(x => `<div class="fila"><span class="nom">${esc(x.opcion)}</span><span class="pista"><i style="width:${100*x.n/Math.max(...vis.map(y=>y.n))}%"></i></span><span class="v">${x.n}</span></div>`).join('') : '<p class="suave">Sin datos todavía.</p>')}
+      ${tarjeta('Contactos Lista 7 (cierre)', 'Registrados después de cerrar cada encuesta · hoja "Contactos ADN"', `<table><tr><td>Mensajes entregados</td><td class="n">${fmt(D.contactos.total)}</td></tr><tr><td>Autorizan contacto por WhatsApp</td><td class="n">${fmt(D.contactos.autorizan)}</td></tr><tr><td>Aceptan publicidad en casa</td><td class="n">${fmt(D.contactos.publicidad)}</td></tr><tr><td>Quieren ser voluntarios</td><td class="n">${fmt(D.contactos.voluntarios)}</td></tr>${Object.entries(D.contactos.interes).map(([a,b])=>`<tr><td class="suave">· ${esc(a)}</td><td class="n">${fmt(b)}</td></tr>`).join('')}</table>`)}
+      ${tarjeta('Verificación telefónica', 'Menú "Generar muestra de verificación" → hoja "Verificación"', `<table><tr><td>Asignadas para llamar</td><td class="n">${fmt(D.verificacion.asignadas)}</td></tr><tr><td>Llamadas hechas</td><td class="n">${fmt(D.verificacion.llamadas)}</td></tr><tr><td>Confirmaron la visita</td><td class="n">${fmt(D.verificacion.confirmadas)}</td></tr><tr><td style="color:var(--sos)">No reconocen la encuesta</td><td class="n" style="color:var(--sos)">${fmt(D.verificacion.noReconoce)}</td></tr></table>`)}
+    </div>`;
+  }
+  if (tab === 'resultados') {
+    const R = D.resultados;
+    const n = `n=${fmt(k.validas)} · ±${k.margenError ?? '—'}%${D.ponderado ? ' · ponderado por padrón' : ' · sin ponderar'}`;
+    const matriz = (lista, cols) => lista.length ? `<div class="tabla"><table><tr><th>Candidato</th>${cols.map(c=>`<th class="n">${c}</th>`).join('')}<th class="n">n</th></tr>${lista.sort((a,b)=>(b[cols[0]]||0)-(a[cols[0]]||0)).map(x=>`<tr><td>${esADN(x.candidato)?'<b>'+esc(x.candidato)+'</b><span class="tag" style="color:var(--barra-adn)">L7</span>':esc(x.candidato)}</td>${cols.map(c=>`<td class="n">${x[c] ?? 0}%</td>`).join('')}<td class="n suave">${x.n}</td></tr>`).join('')}</table></div>` : '<p class="suave">Sin datos todavía.</p>';
+    m.innerHTML = avisos() + `<div class="g dos">
+      ${tarjeta('Alcaldía · intención con papeleta', n, barras(R.alcaldiaInducida))}
+      ${tarjeta('Alcaldía · espontánea (sin mostrar nombres)', 'Mide recordación real · textos normalizados', barras(R.alcaldiaEspontanea))}
+      ${tarjeta('Prefectura · intención con papeleta', n, barras(R.prefecturaInducida))}
+      ${tarjeta('Prefectura · espontánea', 'Mide recordación real', barras(R.prefecturaEspontanea))}
+      ${tarjeta('Concejales urbanos', `Solo parroquias urbanas · n=${k.nUrbano} · ±${k.margenUrbano ?? '—'}%`, barras(R.concejalUrbano))}
+      ${tarjeta('Concejales rurales', `Solo parroquias rurales · n=${k.nRural} · ±${k.margenRural ?? '—'}%`, barras(R.concejalRural))}
+      ${tarjeta('Seguridad del voto (alcaldía)', 'Entre quienes eligieron un candidato', barras(R.alcaldiaSeguridad))}
+      ${tarjeta('Principales problemas de Ambato', '% de personas que lo mencionan (hasta 2 por persona)', barras(R.problemas))}
+      ${tarjeta('Conocimiento de candidatos', '% que ha escuchado de cada uno', matriz(R.conocimiento, ['Sí','No']))}
+      ${tarjeta('Imagen entre quienes lo conocen', 'Buena / mala / ni buena ni mala', matriz(R.imagen, ['Buena','Mala','Ni buena ni mala']))}
+      ${tarjeta('Gestión municipal actual', n, barras(R.gestionMunicipal))}
+      ${tarjeta('Perfil de la muestra', 'Sexo y nivel de estudios', barras(R.sexo) + '<div style="height:10px"></div>' + barras(R.educacion))}
+    </div><p class="suave" style="margin-top:12px">Barras naranjas con etiqueta L7 = candidatos de ADN Lista 7. Uso interno: estos resultados no deben publicarse sin una encuestadora inscrita en el CNE.</p>`;
+  }
+  if (tab === 'parroquias') {
+    m.innerHTML = avisos() + tarjeta('Avance por parroquia', 'Meta calculada según el padrón (hoja "Parroquias") · peso = factor de ponderación aplicado', `<div class="tabla"><table><tr><th>Parroquia</th><th>Zona</th><th class="n">Electores</th><th class="n">Meta</th><th class="n">Válidas</th><th class="n">Recibidas</th><th style="width:28%">Avance</th><th class="n">Peso</th></tr>
+      ${D.avanceParroquias.map(p => { const a = p.meta ? Math.min(100, Math.round(100*p.validas/p.meta)) : 0; return `<tr><td>${esc(p.parroquia)}</td><td class="suave">${p.zona}</td><td class="n">${p.electores ? fmt(p.electores) : '—'}</td><td class="n">${p.meta}</td><td class="n"><b>${p.validas}</b></td><td class="n suave">${p.total}</td><td><div class="prog" style="margin:0" title="${a}%"><i style="width:${a}%;background:${a>=100?'var(--ok)':'var(--barra)'}"></i></div></td><td class="n">${p.peso}</td></tr>`; }).join('')}</table></div>`);
+  }
+  if (tab === 'brigadistas') {
+    const cols = [['nombre','Brigadista'],['parroquiaAsignada','Zona'],['total','Total',1],['hoy','Hoy',1],['ok','OK',1],['revisar','Revisar',1],['sospechosas','Sospechosas',1],['pctAlertas','% alertas',1],['durPromedio','Min. promedio',1],['visitas','Visitas',1],['noReconoce','No reconocen',1],['dispositivos','Teléfonos',1],['ultima','Última']];
+    const orden = pintar.ordenB || ['pctAlertas', -1];
+    const lista = D.brigadistas.slice().sort((a,b) => (a[orden[0]] > b[orden[0]] ? 1 : a[orden[0]] < b[orden[0]] ? -1 : 0) * orden[1]);
+    m.innerHTML = tarjeta('Desempeño de brigadistas', 'Toque un encabezado para ordenar. Revise primero a quienes tienen más % de alertas o personas que "no reconocen" la encuesta.', `<div class="tabla"><table><tr>${cols.map(c=>`<th class="${c[2]?'n':''}" data-c="${c[0]}">${c[1]}${orden[0]===c[0]?(orden[1]<0?' ▼':' ▲'):''}</th>`).join('')}</tr>
+      ${lista.map(b => `<tr><td><b>${esc(b.nombre)}</b><div class="suave" style="font-size:.75rem">${esc(b.cedula)}</div></td><td class="suave">${esc(b.parroquiaAsignada)}</td><td class="n">${b.total}</td><td class="n">${b.hoy}</td><td class="n">${b.ok}</td><td class="n">${b.revisar}</td><td class="n" style="${b.sospechosas?'color:var(--sos);font-weight:700':''}">${b.sospechosas}</td><td class="n" style="${b.pctAlertas>=30?'color:var(--sos);font-weight:700':''}">${b.pctAlertas}%</td><td class="n">${b.durPromedio}</td><td class="n">${b.visitas}</td><td class="n" style="${b.noReconoce?'color:var(--sos);font-weight:700':''}">${b.noReconoce}</td><td class="n" style="${b.dispositivos>1?'color:var(--rev);font-weight:700':''}" title="Más de un teléfono puede indicar PIN compartido">${b.dispositivos}</td><td class="suave">${fecha(b.ultima)}</td></tr>`).join('') || '<tr><td colspan="13" class="suave">Sin datos todavía.</td></tr>'}</table></div>`);
+    m.querySelectorAll('th[data-c]').forEach(th => th.onclick = () => { const c = th.dataset.c; pintar.ordenB = [c, orden[0] === c ? -orden[1] : -1]; pintar(); });
+  }
+  if (tab === 'alertas') {
+    m.innerHTML = tarjeta('Encuestas con alertas', 'Las SOSPECHOSAS no cuentan en los resultados. Para validar o anular una encuesta, escriba VÁLIDA o ANULADA en la columna "Revisión supervisor" de la hoja "Encuestas".', `<div class="tabla"><table><tr><th>Riesgo</th><th>Estado</th><th>Brigadista</th><th>Fecha</th><th>Parroquia</th><th>Motivos</th><th>Evidencia</th></tr>
+      ${D.alertas.map(a => `<tr><td class="n"><b>${a.riesgo}</b></td><td><span class="est ${a.estado}">${a.estado}</span>${a.revision?`<div class="suave" style="font-size:.75rem">${esc(a.revision)}</div>`:''}</td><td>${esc(a.brig)}</td><td class="suave">${fecha(a.inicio)}</td><td>${esc(a.parroquia)}</td><td style="max-width:420px">${esc(a.alertas).split(' | ').join('<br>')}</td><td>${a.foto && a.foto.startsWith('http') ? `<a href="${esc(a.foto)}" target="_blank" rel="noopener">Foto</a> · ` : ''}${a.lat ? `<a href="https://www.google.com/maps?q=${a.lat},${a.lng}" target="_blank" rel="noopener">Mapa</a>` : ''}<div class="suave" style="font-size:.7rem">${esc(String(a.uuid).slice(0,8))}</div></td></tr>`).join('') || '<tr><td colspan="7" class="suave">Sin alertas. </td></tr>'}</table></div>`);
+  }
+  if (tab === 'mapa') {
+    const brigs = [...new Set(D.puntos.map(p => p[3]))].sort();
+    const dias = [...new Set(D.puntos.map(p => p[4]))].sort().reverse();
+    m.innerHTML = `<div class="t"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <select class="f" id="fb"><option value="">Todos los brigadistas</option>${brigs.map(b=>`<option>${esc(b)}</option>`).join('')}</select>
+      <select class="f" id="fd"><option value="">Todos los días</option>${dias.map(d=>`<option>${d}</option>`).join('')}</select>
+      <div class="ley"><span class="est OK">OK</span><span class="est REVISAR">Revisar</span><span class="est SOSPECHOSA">Sospechosa</span></div></div>
+      <div id="mapa"></div><p class="suave" style="font-size:.8rem">Cada punto es el lugar donde empezó una encuesta. Puntos amontonados en la misma casa o lejos de la zona asignada son señales de alerta.</p></div>`;
+    if (typeof L === 'undefined') { $('mapa').innerHTML = '<p class="suave" style="padding:20px">No se pudo cargar el mapa (revise su conexión a internet).</p>'; return; }
+    mapa = L.map('mapa').setView([-1.2491, -78.6167], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(mapa);
+    const colores = [getComputedStyle(document.body).getPropertyValue('--ok'), getComputedStyle(document.body).getPropertyValue('--rev'), getComputedStyle(document.body).getPropertyValue('--sos')];
+    const dibujar = () => {
+      if (capa) capa.remove();
+      const fb = $('fb').value, fd = $('fd').value;
+      const pts = D.puntos.filter(p => (!fb || p[3] === fb) && (!fd || p[4] === fd));
+      capa = L.layerGroup(pts.map(p => L.circleMarker([p[0], p[1]], {radius: 6, weight: 2, color: '#fff', fillColor: colores[p[2]].trim(), fillOpacity: .9}).bindTooltip(`${esc(p[3])} · ${p[4]} · ${['OK','Revisar','Sospechosa'][p[2]]}`))).addTo(mapa);
+      if (pts.length) mapa.fitBounds(L.latLngBounds(pts.map(p => [p[0], p[1]])).pad(0.15), {maxZoom: 16});
+    };
+    $('fb').onchange = dibujar; $('fd').onchange = dibujar; dibujar();
+  }
+}
+
+$('btnEntrar').onclick = () => { try { localStorage.setItem('ea_panel_clave', $('clave').value.trim()); } catch(e) {} cargar(); };
+$('clave').onkeydown = e => { if (e.key === 'Enter') $('btnEntrar').click(); };
+$('btnRef').onclick = cargar;
+$('incRev').onchange = cargar;
+if (clave()) cargar();
+setInterval(() => { if (D && tab !== 'mapa') cargar(); }, 120000);
+</script>
+</body>
+</html>
