@@ -22,7 +22,7 @@ function opcionesPapeleta(cfg, dignidad) {
   return {
     aleatorias: cands.map(c => ({
       id: c.id, label: c.nombre,
-      detalle: [c.organizacion, c.lista ? 'Lista ' + c.lista : ''].filter(Boolean).join(' · ')
+      organizacion: c.organizacion, lista: c.lista, foto: c.foto || '', logo: c.logo || ''
     })),
     fijas: ESPECIALES_VOTO.map(e => ({ id: e.id, label: e.label, texto: e.texto, especial: true }))
   };
@@ -51,9 +51,9 @@ function construirCuestionario(cfg, brigadista) {
     },
     {
       id: 'P03_parroquia', tipo: 'parroquia',
-      texto: '¿En qué parroquia vive usted?',
-      opciones: parroquias.map(p => ({ id: p.nombre, label: p.nombre, detalle: p.zona })),
-      porDefecto: brigadista && parroquias.some(p => p.nombre === brigadista.parroquia) ? brigadista.parroquia : ''
+      texto: '¿En qué parroquia le toca votar?',
+      instruccion: 'La parroquia donde vota (la de su certificado de votación), no necesariamente donde vive.',
+      opciones: parroquias.map(p => ({ id: p.nombre, label: p.nombre, detalle: p.zona }))
     },
     {
       id: 'P04_problemas', tipo: 'multiple', max: 2, aleatorio: true,
@@ -109,7 +109,7 @@ function construirCuestionario(cfg, brigadista) {
       id: 'P12_conocimiento', tipo: 'matriz', aleatorio: true,
       texto: '¿Ha escuchado hablar de las siguientes personas?',
       instruccion: 'Lea cada nombre y marque la respuesta.',
-      filas: () => conocimiento.map(c => ({ id: c.id, label: c.nombre, detalle: NOMBRES_DIGNIDAD[c.dignidad] || '' })),
+      filas: () => conocimiento.map(c => ({ id: c.id, label: c.nombre, foto: c.foto || '', detalle: NOMBRES_DIGNIDAD[c.dignidad] || '' })),
       columnas: ['Sí', 'No'],
       mostrarSi: () => conocimiento.length > 0
     },
@@ -117,7 +117,7 @@ function construirCuestionario(cfg, brigadista) {
       id: 'P13_imagen', tipo: 'matriz', aleatorio: true,
       texto: 'De las personas que conoce, ¿qué opinión tiene de cada una?',
       filas: r => conocimiento.filter(c => r.P12_conocimiento && r.P12_conocimiento[c.nombre] === 'Sí')
-        .map(c => ({ id: c.id, label: c.nombre, detalle: NOMBRES_DIGNIDAD[c.dignidad] || '' })),
+        .map(c => ({ id: c.id, label: c.nombre, foto: c.foto || '', detalle: NOMBRES_DIGNIDAD[c.dignidad] || '' })),
       columnas: ['Buena', 'Mala', 'Ni buena ni mala'],
       mostrarSi: r => r.P12_conocimiento && Object.values(r.P12_conocimiento).includes('Sí')
     },

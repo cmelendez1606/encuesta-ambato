@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en el teléfono para que abra sin señal. */
-const CACHE = 'encuesta-ambato-v1.0.0';
+const CACHE = 'encuesta-ambato-v1.1.0';
 const ARCHIVOS = ['./', './index.html', './estilos.css', './config.js', './cuestionario.js', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

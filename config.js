@@ -4,4 +4,4 @@
 // ================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw2oVAY1x1-b_zpNtaQM2HK30etESxlOUEDyma9F5SWFAgv1XdoNGisELRZcbGRVIkCBA/exec';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';

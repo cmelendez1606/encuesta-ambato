@@ -76,6 +76,77 @@ const DB = {
   async pendientes() { return (await this.todos()).filter(r => r.estadoEnvio === 'pendiente'); }
 };
 
+// ---------------- Fotos y logos de candidatos (guardados en el teléfono para usarlos sin señal) ----------------
+const IMG = {
+  mapa: {},
+  _db: null,
+  abrir() {
+    if (this._db) return Promise.resolve(this._db);
+    return new Promise((ok, mal) => {
+      const r = indexedDB.open('encuesta-ambato-imagenes', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('imgs');
+      r.onsuccess = () => { this._db = r.result; ok(this._db); };
+      r.onerror = () => mal(r.error);
+    });
+  },
+  async cargarTodo() {
+    try {
+      const db = await this.abrir();
+      await new Promise(ok => {
+        const t = db.transaction('imgs', 'readonly'), s = t.objectStore('imgs');
+        const rq = s.openCursor();
+        rq.onsuccess = () => { const c = rq.result; if (c) { this.mapa[c.key] = c.value; c.continue(); } else ok(); };
+        rq.onerror = () => ok();
+      });
+    } catch (e) { }
+  },
+  async guardar(fuente, dataUrl) {
+    this.mapa[fuente] = dataUrl;
+    try {
+      const db = await this.abrir();
+      db.transaction('imgs', 'readwrite').objectStore('imgs').put(dataUrl, fuente);
+    } catch (e) { }
+  },
+  src(fuente) { return fuente ? this.mapa[fuente] || '' : ''; }
+};
+
+function reducirImagen(dataUrl, max) {
+  return new Promise(ok => {
+    const img = new Image();
+    img.onload = () => {
+      const esc = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * esc)); c.height = Math.max(1, Math.round(img.height * esc));
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      ok(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => ok('');
+    img.src = dataUrl;
+  });
+}
+
+let _descargandoImgs = false;
+async function sincronizarImagenes() {
+  if (_descargandoImgs || !S.cfg || !navigator.onLine) return;
+  const fuentes = [...new Set((S.cfg.candidatos || []).flatMap(c => [c.foto, c.logo]).filter(Boolean))].filter(f => !IMG.mapa[f]);
+  if (!fuentes.length) return;
+  _descargandoImgs = true;
+  try {
+    for (let i = 0; i < fuentes.length; i += 4) {
+      const lote = fuentes.slice(i, i + 4);
+      const r = await api('GET', null, { action: 'imagenes', fuentes: lote.join('|') });
+      if (!r || !r.ok) continue;
+      for (const f of Object.keys(r.imagenes || {})) {
+        const peq = await reducirImagen(r.imagenes[f], 360);
+        if (peq) await IMG.guardar(f, peq);
+      }
+    }
+  } catch (e) { /* se reintenta en la próxima conexión */ }
+  finally { _descargandoImgs = false; }
+}
+
 // Pide al navegador que no borre los datos guardados
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => { });
 
@@ -128,6 +199,7 @@ async function cargarConfig(forzar) {
     const c = await api('GET', null, { action: 'config' });
     if (c && c.ok) { S.cfg = c; LS.set('cfg', c); LS.set('cfgHora', Date.now()); }
   } catch (e) { /* se usa la copia guardada */ }
+  sincronizarImagenes();
   return S.cfg;
 }
 
@@ -579,6 +651,16 @@ function mostrarPregunta(i) {
     return el('button', { class: 'opcion' + (clase ? ' ' + clase : '') + (esSel ? ' sel' : ''), onclick: onSel },
       o.texto || o.label, o.detalle ? el('small', null, o.detalle) : null);
   }
+  function tarjetaCandidato(o, esSel, onSel) {
+    const foto = IMG.src(o.foto), logo = IMG.src(o.logo);
+    const iniciales = String(o.label).split(' ').filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+    return el('button', { class: 'opcion candidato' + (esSel ? ' sel' : ''), onclick: onSel },
+      foto ? el('img', { class: 'cand-foto', src: foto, alt: '' }) : el('span', { class: 'cand-foto cand-iniciales' }, iniciales),
+      el('span', { class: 'cand-texto' },
+        el('span', { class: 'cand-nombre' }, o.label),
+        el('span', { class: 'cand-partido' }, [o.organizacion, o.lista ? 'Lista ' + o.lista : ''].filter(Boolean).join(' · '))),
+      logo ? el('img', { class: 'cand-logo', src: logo, alt: o.organizacion || '' }) : (o.lista ? el('span', { class: 'cand-logo cand-lista' }, o.lista) : null));
+  }
   function marcar(cont, btn) { [...cont.querySelectorAll('.opcion')].forEach(x => x.classList.remove('sel')); btn.classList.add('sel'); }
 
   switch (q.tipo) {
@@ -640,7 +722,7 @@ function mostrarPregunta(i) {
       const etiquetas = ordenadas.map(o => o.label).concat(op.fijas.map(o => o.label));
       if (v !== undefined && !etiquetas.includes(v)) v = undefined;
       const cont = el('div', { class: 'opciones' });
-      ordenadas.forEach(o => cont.append(botonOpcion(o, v === o.label, (ev) => { v = o.label; marcar(cont, ev.currentTarget); actualizar(); })));
+      ordenadas.forEach(o => cont.append(tarjetaCandidato(o, v === o.label, (ev) => { v = o.label; marcar(cont, ev.currentTarget); actualizar(); })));
       cont.append(el('div', { class: 'separador' }));
       op.fijas.forEach(o => cont.append(botonOpcion(o, v === o.label, (ev) => { v = o.label; marcar(cont, ev.currentTarget); actualizar(); }, 'especial')));
       cuerpo.append(cont);
@@ -654,7 +736,10 @@ function mostrarPregunta(i) {
       ordenGuardado(q, filas).forEach(f => {
         const cols = el('div', { class: 'cols' });
         q.columnas.forEach(c => cols.append(botonOpcion({ label: c }, v[f.label] === c, (ev) => { v[f.label] = c; marcar(cols, ev.currentTarget); actualizar(); })));
-        cont.append(el('div', { class: 'matriz-fila' }, el('div', { class: 'nombre' }, f.label, f.detalle ? el('small', null, f.detalle) : null), cols));
+        const fotoM = IMG.src(f.foto);
+        cont.append(el('div', { class: 'matriz-fila' },
+          el('div', { class: 'nombre con-foto' }, fotoM ? el('img', { class: 'cand-foto chica', src: fotoM, alt: '' }) : null,
+            el('span', null, f.label, f.detalle ? el('small', null, f.detalle) : null)), cols));
       });
       cuerpo.append(cont);
       break;
@@ -789,6 +874,7 @@ function pantallaCierre(ctx) {
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => { });
   }
+  IMG.cargarTodo();
   try { await DB.abrir(); } catch (e) {
     pintar(el('div', { class: 'caja-error' }, 'Este navegador no permite guardar datos. Use Chrome actualizado y no use modo incógnito.'));
     return;
